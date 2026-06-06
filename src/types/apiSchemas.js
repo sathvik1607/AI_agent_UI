@@ -3,12 +3,8 @@
  *
  * Backend endpoints:
  *   GET  /health            → { status: 'healthy' }
- *   POST /analytics         → AnalyticsApiResponse      (business users)
+ *   POST /analytics         → AnalyticsApiResponse      (only endpoint for user messages)
  *   POST /analytics/debug   → AnalyticsDebugResponse    (developers only)
- *
- * Removed endpoints (do NOT call from the frontend):
- *   POST /chat      — removed; all queries go to POST /analytics
- *   GET  /tool-usage — never existed; no backend implementation
  *
  * ─── ANALYTICS ───────────────────────────────────────────────────────────────
  * POST /analytics
@@ -17,11 +13,19 @@
  * @property {boolean} success
  * @property {string} question
  * @property {AnalysisBlock|null} analysis
- * @property {string|null} insights      - markdown string rendered by InsightsPanel
+ * @property {string|null} insights         - markdown string rendered by InsightsPanel
+ * @property {AgentTimelineStep[]|null} agent_timeline
  * @property {string|null} error
+ *
+ * @typedef {Object} AgentTimelineStep
+ * @property {string} step    - display label
+ * @property {string} icon    - key into ICON_MAP in AgentTimeline.jsx
+ * @property {'completed'|'running'|'pending'} status
  *
  * @typedef {Object} AnalysisBlock
  * @property {string} summary
+ * @property {string[]} key_insights  - bullet-point highlights, rendered as a list
+ * @property {'table'} output_format
  * @property {string} output_title
  * @property {string[]} output_columns
  * @property {Record<string, string>[]} output_data

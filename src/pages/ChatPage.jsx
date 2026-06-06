@@ -2,8 +2,6 @@ import { useState, useRef, useCallback } from 'react';
 import { useConversations } from '../hooks/useConversations';
 import { useDiagnostics } from '../hooks/useDiagnostics';
 import { runAnalysis } from '../services/analyticsService';
-import { sendChatMessage, extractChatContent } from '../services/chatService';
-import { detectAnalyticsIntent } from '../utils/intentDetector';
 import Sidebar from '../components/sidebar/Sidebar';
 import ChatWindow from '../components/chat/ChatWindow';
 
@@ -48,6 +46,7 @@ const ChatPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [lastRequestDuration, setLastRequestDuration] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Forwarded to InputArea so we can programmatically focus it after new-chat creation
   const inputRef = useRef(null);
@@ -71,11 +70,11 @@ const ChatPage = () => {
   );
 
   /**
-   * Routes to POST /analytics (data questions) or POST /chat (everything else).
+   * Sends every message to POST /analytics — the only backend endpoint.
    *
    * conversationId is captured at call-time so a mid-flight tab switch routes
    * the response to the originating conversation, not the newly active one.
-   * Duration is measured client-side; neither endpoint returns it in the body.
+   * Duration is measured client-side; the response has no execution time field.
    */
   const handleSend = useCallback(
     async (messageText) => {
@@ -87,15 +86,9 @@ const ChatPage = () => {
       const requestStart = performance.now();
 
       try {
-        if (detectAnalyticsIntent(messageText)) {
-          const analyticsResponse = await runAnalysis(messageText);
-          setLastRequestDuration(Math.round(performance.now() - requestStart));
-          appendBotMessage(conversationId, 'analytics', analyticsResponse);
-        } else {
-          const chatApiResponse = await sendChatMessage(messageText);
-          setLastRequestDuration(Math.round(performance.now() - requestStart));
-          appendBotMessage(conversationId, 'chat', extractChatContent(chatApiResponse));
-        }
+        const analyticsResponse = await runAnalysis(messageText);
+        setLastRequestDuration(Math.round(performance.now() - requestStart));
+        appendBotMessage(conversationId, 'analytics', analyticsResponse);
       } catch (error) {
         appendSystemError(conversationId, 'Unable to reach the Analytics Service. Please try again.');
         console.error('[ChatPage] API error:', error);
@@ -106,16 +99,22 @@ const ChatPage = () => {
     [activeConversationId, appendUserMessage, appendBotMessage, appendSystemError],
   );
 
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   return (
     <div className="app-container">
+      {/* Dim overlay — tapping it closes the sidebar on mobile */}
+      {isSidebarOpen && <div className="sidebar-overlay" onClick={closeSidebar} />}
+
       <Sidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
-        onSelectConversation={setActiveConversationId}
-        onNewChat={handleNewChat}
+        onSelectConversation={(id) => { setActiveConversationId(id); closeSidebar(); }}
+        onNewChat={() => { handleNewChat(); closeSidebar(); }}
         onDeleteConversation={handleDeleteConversation}
         isDiagnosticsOpen={isDiagnosticsOpen}
         onToggleDiagnostics={() => setIsDiagnosticsOpen((open) => !open)}
+        isOpen={isSidebarOpen}
       />
       <ChatWindow
         messages={messages}
@@ -127,6 +126,7 @@ const ChatPage = () => {
         toolUsage={toolUsage}
         lastRequestDuration={lastRequestDuration}
         inputRef={inputRef}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
       />
     </div>
   );

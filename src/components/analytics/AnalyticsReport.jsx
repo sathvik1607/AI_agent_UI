@@ -2,6 +2,7 @@ import { memo } from 'react';
 import AnalyticsTable from './AnalyticsTable';
 import InsightsPanel from './InsightsPanel';
 import SqlViewer from './SqlViewer';
+import AgentTimeline from './AgentTimeline';
 
 /**
  * Composes a full analytics report from an Analytics Engine API response.
@@ -29,8 +30,9 @@ const AnalyticsReport = memo(({ analyticsResponse }) => {
     );
   }
 
-  const { analysis, insights, generated_queries: generatedQueries } = analyticsResponse;
+  const { analysis, insights, generated_queries: generatedQueries, agent_timeline: agentTimeline } = analyticsResponse;
   const hasTableData = Array.isArray(analysis?.output_data) && analysis.output_data.length > 0;
+  const hasKeyInsights = Array.isArray(analysis?.key_insights) && analysis.key_insights.length > 0;
 
   // NL2SQL agent found nothing to work with (non-data question slipped through routing)
   if (!analysis && !insights) {
@@ -70,6 +72,53 @@ const AnalyticsReport = memo(({ analyticsResponse }) => {
             Executive Summary
           </div>
           {analysis.summary}
+        </div>
+      )}
+
+      {/* Agent timeline (left) + Key Insights (right) side by side */}
+      {(agentTimeline?.length > 0 || hasKeyInsights) && (
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'stretch', flexWrap: 'wrap' }}>
+
+          {/* Brain icon — left column, stretches to Key Insights box height */}
+          {agentTimeline?.length > 0 && (
+            <div style={{ flex: '0 0 auto', display: 'flex', alignSelf: 'stretch' }}>
+              <AgentTimeline timeline={agentTimeline} />
+            </div>
+          )}
+
+          {/* Key Insights — right column */}
+          {hasKeyInsights && (
+            <div
+              style={{
+                flex: 1,
+                minWidth: '200px',
+                padding: '1rem 1.25rem',
+                backgroundColor: 'var(--card-bg)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-md)',
+              }}
+            >
+              <div
+                style={{
+                  color: 'var(--text-muted)',
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '0.75rem',
+                }}
+              >
+                Key Insights
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                {analysis.key_insights.map((insight, i) => (
+                  <li key={i} style={{ color: 'var(--text-main)', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                    {insight}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

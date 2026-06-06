@@ -1,3 +1,4 @@
+import { Menu } from 'lucide-react';
 import MessageList from './MessageList';
 import InputArea from './InputArea';
 import DiagnosticsPanel from '../diagnostics/DiagnosticsPanel';
@@ -35,6 +36,7 @@ const ChatWindow = ({
   toolUsage,
   lastRequestDuration,
   inputRef,
+  onOpenSidebar,
 }) => {
   const statusColor =
     backendHealthStatus === 'Online'  ? 'var(--success)' :
@@ -45,6 +47,10 @@ const ChatWindow = ({
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="chat-header">
+        {/* Hamburger — only visible on mobile via CSS */}
+        <button className="mobile-menu-btn" onClick={onOpenSidebar} aria-label="Open menu">
+          <Menu size={20} />
+        </button>
         <div className="header-title">
           <h1>Analytics Agent</h1>
           <span className="subtitle">AI-Powered Operations Assistant</span>
