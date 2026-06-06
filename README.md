@@ -1,38 +1,80 @@
-# 🚀 Analytics Agent UI
+# Analytics Agent — Frontend
 
-A premium, React-based enterprise AI frontend for interacting with the Analytics Agent via a FastAPI backend.
-Designed for operations, analytics, and business teams, featuring a clean Copilot-style multi-conversation interface.
+A production-grade React frontend for the **AlumnxAI Labs Analytics Agent** — an AI-powered NL2SQL platform that turns plain-English business questions into structured data reports, insights, and visualisations.
 
----
-
-## ✨ Features
-
-* 💬 Multi-conversation interface with history tracking
-* 🗂️ Persistent local storage for chats and session IDs
-* ✍️ Markdown-rendered responses (tables, code blocks, lists)
-* ⚡ Live Diagnostics Panel (Health & Tool Usage polling)
-* 📱 Responsive, enterprise-grade dark mode UI
-* 🚀 Auto-titling for new conversations
+Built for operations, finance, and analytics teams who need fast answers from their database without writing SQL.
 
 ---
 
-## 📦 Requirements
+## What it does
 
-* Node.js 18+
-* npm
+Type a business question in plain English. The agent queries your database, analyzes the results, and returns:
+
+- **Executive Summary** — a concise plain-text answer
+- **Key Insights** — bullet-point highlights extracted by the engine
+- **Data Table** — structured query output with column headers and rows
+- **Insights Narrative** — LLM-generated observations and recommendations
+- **Agent Timeline** — live step-by-step progress while the agent works
 
 ---
 
-## ⚙️ Setup Instructions
+## Tech Stack
 
-### 1. Clone the repository
+| Layer | Technology |
+|---|---|
+| Framework | React 19 + Vite |
+| Icons | Lucide React, React Icons |
+| Markdown | react-markdown |
+| State | React hooks + localStorage |
+| Styling | Pure CSS variables (dark theme) |
+| Backend | FastAPI (separate repo) |
 
-```bash
-git clone https://github.com/sathvik1607/AI_agent_UI.git
-cd AI_agent_UI
+---
+
+## Architecture
+
+The frontend follows a strict **feature-based module structure**. The monolithic entry point has been decomposed into focused files:
+
+```
+src/
+├── pages/
+│   └── ChatPage.jsx          # Sole orchestrator — owns all state and API calls
+├── components/
+│   ├── analytics/            # AnalyticsReport, AnalyticsTable, InsightsPanel,
+│   │                         # AgentTimeline, AgentTimelineLoader, SqlViewer
+│   ├── chat/                 # ChatWindow, MessageList, BotMessage,
+│   │                         # UserMessage, SystemMessage, InputArea
+│   ├── diagnostics/          # DiagnosticsPanel
+│   └── sidebar/              # Sidebar, ChatHistory, ConversationItem
+├── hooks/
+│   ├── useConversations.js   # Multi-conversation state + localStorage sync
+│   ├── useDiagnostics.js     # /health polling
+│   ├── useAutoScroll.js      # Scroll-to-bottom sentinel
+│   └── useLocalStorage.js    # Validated persistent state
+├── services/
+│   ├── apiClient.js          # Base fetch wrapper with error handling
+│   └── analyticsService.js   # POST /analytics
+├── utils/
+│   ├── constants.js          # API base URL, storage keys, intervals
+│   └── conversationUtils.js  # ID generation, title derivation, timestamps
+└── types/
+    └── apiSchemas.js         # JSDoc types mirroring the Python backend contract
 ```
 
+**Design rules:**
+- `ChatPage` is the only component that calls services or hooks — everything else is purely presentational
+- No component ever calls `fetch()` directly
+- Conversation IDs are generated client-side (`sess-<timestamp>-<random>`) — the backend is stateless
+
 ---
+
+## Setup
+
+### 1. Prerequisites
+
+- Node.js 18+
+- npm
+- The Analytics Agent backend running (separate repo)
 
 ### 2. Install dependencies
 
@@ -40,70 +82,106 @@ cd AI_agent_UI
 npm install
 ```
 
----
+### 3. Configure environment
 
-## 🔑 Environment Configuration
-
-Create a `.env` file in the root directory:
+Create a `.env` file in the project root:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
 ```
 
-⚠️ Make sure this matches your backend URL.
+Match this to wherever your FastAPI backend is running.
 
----
-
-## ▶️ Run the App
+### 4. Start the dev server
 
 ```bash
 npm run dev
 ```
 
-App runs at:
-
-```
-http://localhost:5173
-```
-*(Port may vary if 5173 is in use, e.g., 5174)*
+App runs at `http://localhost:5175` by default.
 
 ---
 
-## 📡 API Integration
+## Backend API Contract
 
-The frontend expects the backend to expose the following endpoints:
+The frontend talks to exactly **two endpoints**:
 
-### 1. Text Chat
+### `POST /analytics`
 
-**POST** `/chat`
+Accepts a natural-language business question and returns a full analytics report.
 
+**Request:**
+```json
+{ "question": "What is the total revenue for Q1 2026?" }
+```
+
+**Response:**
 ```json
 {
-  "message": "Hello",
-  "session_id": "sess-12345..."
+  "success": true,
+  "question": "What is the total revenue for Q1 2026?",
+  "analysis": {
+    "summary": "Total Q1 2026 revenue is ₹46,89,247.50.",
+    "key_insights": ["Revenue grew 12% vs Q4 2025"],
+    "output_format": "table",
+    "output_title": "Q1 2026 Revenue Summary",
+    "output_columns": ["Month", "Revenue"],
+    "output_data": [{ "Month": "January", "Revenue": "₹14,20,310.00" }]
+  },
+  "insights": "INSIGHT SUMMARY\n...",
+  "agent_timeline": [
+    { "step": "Understanding Question", "icon": "brain", "status": "completed" },
+    { "step": "Finding Relevant Data",  "icon": "search", "status": "completed" },
+    { "step": "Gathering Data",         "icon": "database", "status": "completed" },
+    { "step": "Analyzing Results",      "icon": "chart", "status": "completed" },
+    { "step": "Generating Insights",    "icon": "lightbulb", "status": "completed" }
+  ],
+  "error": null
 }
 ```
 
-### 2. Health Check
+### `GET /health`
 
-**GET** `/health`
-*(Polled every 5 seconds for live status)*
+Polled every 5 seconds to drive the status indicator in the header and diagnostics panel.
 
-### 3. Tool Usage
-
-**GET** `/tool-usage`
-*(Polled every 5 seconds to display tool activity in the diagnostics panel)*
+```json
+{ "status": "healthy" }
+```
 
 ---
 
-## 🧠 Notes
+## Key Features
 
-* The frontend operates entirely on text interactions; file uploads are not supported in this version.
-* Ensure the backend is running before using the app to see the "Online" status indicator.
-* Local chat history can be wiped by clearing your browser's local storage or using the per-chat delete button.
+**Multi-conversation sidebar**
+- Create, switch, and delete conversations
+- Titles auto-derived from the first message
+- Persisted in `localStorage` across page refreshes
+
+**Live agent progress**
+- While the agent works, a 5-step animated timeline shows which stage is active
+- The active step pulses; the final "Generating Insights" step glows
+- On completion, a lightbulb + search icon stays beside Key Insights with a 5-second glow
+
+**Diagnostics panel**
+- Toggle with the Activity icon in the sidebar footer
+- Shows: backend health, session ID, last request duration
+
+**Mobile support**
+- Sidebar collapses off-screen on viewports ≤ 768px
+- Hamburger menu in the header slides it back in
+- Tap the dim overlay to close
 
 ---
 
-## 📄 License
+## Notes
 
-MIT
+- Chat history is stored in `localStorage` — clearing browser storage wipes it
+- The backend is fully stateless; each request is independent with no server-side session
+- File uploads are not supported
+- The Settings panel is coming soon
+
+---
+
+## License
+
+MIT — AlumnxAI Labs
